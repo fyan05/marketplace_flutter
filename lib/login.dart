@@ -148,19 +148,31 @@ class LoginPage extends StatelessWidget {
                       ? null
                       : () async {
                           _isLoading.value = true;
+
                           try {
-                            final token = await apiService.login(
+                            final result = await apiService.login(
                               emailController.text.trim(),
                               passwordController.text.trim(),
                             );
+
+                            final token = result["token"];
+                            final user = result["user"];
+
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text("Login Berhasil ✅")),
                             );
+
                             Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) =>
-                                        homepage(token: token, userId: 2)));
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => HomePage(
+                                  token: token,
+                                  userId: user["id_user"],
+                                  nama:
+                                      user["nama"], // kalau homepage butuh nama
+                                ),
+                              ),
+                            );
                           } catch (e) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text(e.toString())),
