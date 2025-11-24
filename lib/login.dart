@@ -1,5 +1,5 @@
 import 'dart:ui';
-import 'package:final_project/home.dart';
+import 'package:final_project/navbar.dart';
 import 'package:flutter/material.dart';
 import 'package:final_project/api-service.dart';
 
@@ -165,7 +165,7 @@ class LoginPage extends StatelessWidget {
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => HomePage(
+                                builder: (_) => MainNavigation(
                                   token: token,
                                   userId: user["id_user"],
                                   nama:
@@ -193,17 +193,6 @@ class LoginPage extends StatelessWidget {
                 ),
               );
             },
-          ),
-          const SizedBox(height: 12),
-          TextButton(
-            onPressed: () {},
-            child: const Text(
-              "Lupa kata sandi?",
-              style: TextStyle(
-                color: Color.fromARGB(255, 94, 169, 92),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
           ),
         ],
       ),

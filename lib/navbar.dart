@@ -26,7 +26,7 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget build(BuildContext context) {
     final screens = [
       HomePage(userId: widget.userId, token: widget.token, nama: widget.nama),
-      ProductPage(token: widget.token),
+      ProductPage(token: widget.token, userId: widget.userId),
       ProfilePage(nama: widget.nama),
     ];
 

@@ -1,124 +1,148 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'api-service.dart';
+import 'tambah+edit-produk.dart';
 
 class ProductPage extends StatefulWidget {
   final String token;
-
-  const ProductPage({super.key, required this.token});
+  final int userId;
+  const ProductPage({super.key, required this.token, required this.userId});
 
   @override
   State<ProductPage> createState() => _ProductPageState();
 }
 
 class _ProductPageState extends State<ProductPage> {
-  List products = [];
-  bool loading = true;
+  final ApiServices api = ApiServices();
+
+  late Future<List<Product>> productFuture;
 
   @override
   void initState() {
     super.initState();
-    fetchProducts();
+    productFuture = api.getProducts();
   }
 
-  Future<void> fetchProducts() async {
-    try {
-      final res = await http.get(
-        Uri.parse("https://learncode.biz.id/api/produk"),
-        headers: {
-          "Authorization": "Bearer ${widget.token}",
-        },
-      );
-
-      final data = jsonDecode(res.body);
-
-      setState(() {
-        products = data["data"];
-        loading = false;
-      });
-    } catch (e) {
-      print("Error: $e");
-      setState(() => loading = false);
-    }
+  void refreshData() {
+    setState(() {
+      productFuture = api.getProducts();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Daftar Produk"),
-        backgroundColor: Colors.green,
+      appBar: AppBar(title: const Text("Produk")),
+      floatingActionButton: FloatingActionButton(
+        child: const Icon(Icons.add),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ProductFormPage()),
+          ).then((value) => refreshData());
+        },
       ),
-      body: loading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: products.length,
-              itemBuilder: (context, index) {
-                final p = products[index];
+      body: FutureBuilder<List<Product>>(
+        future: productFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-                String imageUrl = p["images"].isEmpty
-                    ? "https://learncode.biz.id/images/no-image.png"
-                    : p["images"][0]["url"];
+          if (snapshot.hasError) {
+            return Center(child: Text("Gagal load server: ${snapshot.error}"));
+          }
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 6,
-                      )
-                    ],
+          final products = snapshot.data ?? [];
+
+          if (products.isEmpty) {
+            return const Center(child: Text("Belum ada produk"));
+          }
+
+          return ListView.builder(
+            itemCount: products.length,
+            itemBuilder: (context, index) {
+              final p = products[index];
+              return Card(
+                child: ListTile(
+                  leading: Image.network(
+                    p.image,
+                    width: 60,
+                    height: 60,
+                    fit: BoxFit.cover,
+                    errorBuilder: (c, o, s) => const Icon(Icons.broken_image),
                   ),
-                  child: Row(
+                  title: Text(p.name),
+                  subtitle: Text("Rp ${p.price}"),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Image.network(
-                          imageUrl,
-                          width: 90,
-                          height: 90,
-                          fit: BoxFit.cover,
-                        ),
+                      IconButton(
+                        icon: const Icon(Icons.edit),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ProductFormPage(product: p),
+                            ),
+                          ).then((value) => refreshData());
+                        },
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              p["nama_produk"],
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              "Rp ${p["harga"]}",
-                              style: const TextStyle(
-                                color: Colors.green,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              "Toko: ${p["toko"]["nama"]}",
-                              style: const TextStyle(color: Colors.grey),
-                            ),
-                          ],
-                        ),
-                      )
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () async {
+                          final ok = await api.deleteProduct(p.id);
+                          if (ok) refreshData();
+                        },
+                      ),
                     ],
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+// Product model (jika mau dipisah, bisa buat file product_model.dart)
+class Product {
+  final int id;
+  final String name;
+  final int categoryId;
+  final String categoryName;
+  final int price;
+  final int stock;
+  final String description;
+  final String date;
+  final String image; // ambil gambar pertama atau kosong
+
+  Product({
+    required this.id,
+    required this.name,
+    required this.categoryId,
+    required this.categoryName,
+    required this.price,
+    required this.stock,
+    required this.description,
+    required this.date,
+    required this.image,
+  });
+
+  factory Product.fromJson(Map<String, dynamic> json) {
+    final images = json['images'] as List? ?? [];
+
+    return Product(
+      id: json['id_produk'],
+      name: json['nama_produk'] ?? '',
+      categoryId: int.parse(json['id_kategori'].toString()),
+      categoryName: json['nama_kategori'] ?? '',
+      price: int.parse(json['harga'].toString()),
+      stock: int.parse(json['stok'].toString()),
+      description: json['deskripsi'] ?? '',
+      date: json['tanggal_upload'] ?? '',
+      image: images.isNotEmpty ? images[0]['url']?.toString() ?? "" : "",
     );
   }
 }

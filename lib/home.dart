@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'kategori.dart';
 
 class HomePage extends StatefulWidget {
   final String token;
@@ -17,273 +20,203 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int selectedCategory = 0;
+  List products = [];
+  bool loading = true;
 
-  List<String> categories = [
-    "Semua",
-    "Makanan",
-    "Minuman",
-    "Snack",
-    "Vegan",
-    "Kopi",
-  ];
+  @override
+  void initState() {
+    super.initState();
+    fetchProducts();
+  }
+
+  Future<void> fetchProducts() async {
+    try {
+      final res = await http.get(
+        Uri.parse("https://learncode.biz.id/api/products"),
+        headers: {"Authorization": "Bearer ${widget.token}"},
+      );
+
+      final data = jsonDecode(res.body);
+
+      setState(() {
+        products = data["data"];
+        loading = false;
+      });
+    } catch (e) {
+      print("Error: $e");
+      setState(() => loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F9),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // ================= HEADER =================
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Halo, ${widget.nama}",
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          "Mau makan apa hari ini?",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    // Notif Icon
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
-                            blurRadius: 6,
-                          ),
-                        ],
-                      ),
-                      child: const Icon(Icons.notifications_none),
-                    ),
-                  ],
+      appBar: AppBar(
+        backgroundColor: Colors.green,
+        elevation: 0,
+        title: Text(
+          "Halo, ${widget.nama}",
+          style: const TextStyle(color: Colors.white),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ===========================
+            // HERO BANNER
+            // ===========================
+            Container(
+              height: 160,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                image: const DecorationImage(
+                  image: NetworkImage(
+                      "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=1200&q=80"),
+                  fit: BoxFit.cover,
                 ),
               ),
-
-              // ================= SEARCH BAR =================
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  color: Colors.black.withOpacity(0.3),
+                ),
+                alignment: Alignment.bottomLeft,
+                child: Text(
+                  "Selamat Datang, ${widget.nama}!",
+                  style: const TextStyle(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 8,
-                      ),
-                    ],
-                  ),
-                  child: const TextField(
-                    decoration: InputDecoration(
-                      hintText: "Cari makanan, minuman...",
-                      border: InputBorder.none,
-                      icon: Icon(Icons.search, color: Colors.green),
-                    ),
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
+            ),
 
-              const SizedBox(height: 20),
-
-              // ================= BANNER =================
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Container(
-                  height: 160,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    image: const DecorationImage(
-                      image: AssetImage("assets/banner_food.jpg"),
-                      fit: BoxFit.cover,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.10),
-                        blurRadius: 10,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                ),
+            const SizedBox(height: 20),
+            // ===========================
+            // BUTTON KATEGORI
+            // ===========================
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
               ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => CategoryPage(token: widget.token),
+                  ),
+                );
+              },
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.category, color: Colors.white),
+                  SizedBox(width: 8),
+                  Text(
+                    "Lihat Kategori",
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                ],
+              ),
+            ),
 
-              const SizedBox(height: 22),
+            const SizedBox(height: 25),
+            const Text(
+              "Produk Terbaru",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
 
-              // ================= CATEGORY =================
-              SizedBox(
-                height: 45,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: categories.length,
-                  itemBuilder: (context, index) {
-                    bool active = selectedCategory == index;
+            const SizedBox(height: 15),
 
-                    return GestureDetector(
-                      onTap: () => setState(() => selectedCategory = index),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        margin: const EdgeInsets.only(right: 12),
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        decoration: BoxDecoration(
-                          color: active ? Colors.green : Colors.white,
-                          borderRadius: BorderRadius.circular(25),
-                          border: Border.all(color: Colors.green),
-                          boxShadow: active
-                              ? [
+            loading
+                ? const Center(child: CircularProgressIndicator())
+                : products.isEmpty
+                    ? const Text("Tidak ada produk ditemukan")
+                    : SizedBox(
+                        height: 240,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: products.length,
+                          itemBuilder: (context, index) {
+                            final p = products[index];
+
+                            // FIXING IMAGE URL
+                            String imageUrl = p["images"].isNotEmpty
+                                ? "https://learncode.biz.id/${p["images"][0]["image"]}"
+                                : "https://learncode.biz.id/images/no-image.png";
+
+                            return Container(
+                              width: 160,
+                              margin: const EdgeInsets.only(right: 15),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(15),
+                                boxShadow: [
                                   BoxShadow(
-                                    color: Colors.green.withOpacity(0.3),
-                                    blurRadius: 10,
+                                    blurRadius: 6,
+                                    color: Colors.black12.withOpacity(0.1),
                                     offset: const Offset(0, 3),
+                                  )
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(15),
+                                    ),
+                                    child: Image.network(
+                                      imageUrl,
+                                      height: 130,
+                                      width: double.infinity,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (c, o, s) =>
+                                          Container(color: Colors.grey),
+                                    ),
                                   ),
-                                ]
-                              : [],
+                                  Padding(
+                                    padding: const EdgeInsets.all(10),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          p["nama_produk"],
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 5),
+                                        Text(
+                                          "Rp ${p["harga"]}",
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.green,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                ],
+                              ),
+                            );
+                          },
                         ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          categories[index],
-                          style: TextStyle(
-                            color: active ? Colors.white : Colors.green,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
                       ),
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // ================= POPULAR SECTION =================
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    Text(
-                      "Populer Minggu Ini",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    Text(
-                      "Lihat Semua",
-                      style: TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 15),
-
-              // ================= FOOD LIST =================
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  children: List.generate(5, (index) {
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 14),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.06),
-                            blurRadius: 8,
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          // Image
-                          ClipRRect(
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(16),
-                              bottomLeft: Radius.circular(16),
-                            ),
-                            child: Image.asset(
-                              "assets/food_sample.jpg",
-                              width: 100,
-                              height: 100,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-
-                          const SizedBox(width: 12),
-
-                          // Text
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
-                                Text(
-                                  "Ayam Geprek Pedas",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  "Pedas level 5, crispy dan fresh",
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                Text(
-                                  "Rp 18.000",
-                                  style: TextStyle(
-                                    color: Colors.green,
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                ),
-              ),
-
-              const SizedBox(height: 30),
-            ],
-          ),
+          ],
         ),
       ),
     );
