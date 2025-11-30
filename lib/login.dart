@@ -1,200 +1,177 @@
-import 'dart:ui';
-import 'package:final_project/navbar.dart';
-import 'package:flutter/material.dart';
 import 'package:final_project/api-service.dart';
+import 'package:final_project/navbar.dart';
+import 'package:final_project/registrasi.dart';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class LoginPage extends StatelessWidget {
-  LoginPage({super.key});
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
 
-  final ApiServices apiService = ApiServices();
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
 
-  final ValueNotifier<bool> _isPasswordVisible = ValueNotifier(false);
-  final ValueNotifier<bool> _isLoading = ValueNotifier(false);
+class _LoginPageState extends State<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+  final ApiServices _api = ApiServices();
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _login() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
+
+    try {
+      final result = await _api.login(
+        _usernameController.text.trim(),
+        _passwordController.text.trim(),
+      );
+
+      final token = result["token"] as String;
+      final userId = result["userId"] as int;
+      final nama = result["nama"] as String;
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', token);
+      await prefs.setInt('userId', userId);
+      await prefs.setString('nama', nama);
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+            builder: (_) =>
+                MainNavigation(token: token, userId: userId, nama: nama)),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color.fromARGB(255, 231, 253, 232),
-                  Color.fromARGB(255, 94, 169, 92)
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
+      body: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color.fromARGB(255, 73, 243, 118),
+              Color.fromARGB(255, 142, 248, 170)
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
           ),
-          Center(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Container(
-                  width: 340,
-                  padding: const EdgeInsets.all(28),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.25),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.4),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color:
-                            Color.fromARGB(255, 94, 169, 92).withOpacity(0.15),
-                        blurRadius: 10,
-                        offset: const Offset(0, 6),
+        ),
+        child: Center(
+          child: SingleChildScrollView(
+            child: Card(
+              margin: const EdgeInsets.symmetric(horizontal: 25),
+              elevation: 10,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        "Welcome Back!",
+                        style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: Color.fromARGB(255, 73, 243, 118)),
                       ),
-                    ],
-                  ),
-                  child: _buildLoginForm(context),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLoginForm(BuildContext context) {
-    return Form(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.fastfood,
-            color: Color.fromARGB(255, 255, 255, 255),
-            size: 80,
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            "Selamat Datang",
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 32),
-          TextField(
-            controller: emailController,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.white.withOpacity(0.8),
-              labelText: "Username",
-              hintText: "Masukkan username",
-              prefixIcon: const Icon(Icons.person_outline,
-                  color: Color.fromARGB(255, 94, 169, 92)),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          ValueListenableBuilder<bool>(
-            valueListenable: _isPasswordVisible,
-            builder: (context, visible, _) {
-              return TextField(
-                controller: passwordController,
-                obscureText: !visible,
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.8),
-                  labelText: "Kata Sandi",
-                  hintText: "Masukkan kata sandi",
-                  prefixIcon: const Icon(Icons.lock_outline,
-                      color: Color.fromARGB(255, 94, 169, 92)),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      visible
-                          ? Icons.visibility_off_rounded
-                          : Icons.visibility_rounded,
-                      color: Color.fromARGB(255, 94, 169, 92),
-                    ),
-                    onPressed: () =>
-                        _isPasswordVisible.value = !_isPasswordVisible.value,
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-          ValueListenableBuilder<bool>(
-            valueListenable: _isLoading,
-            builder: (context, loading, _) {
-              return SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color.fromARGB(255, 94, 169, 92),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    elevation: 3,
-                  ),
-                  onPressed: loading
-                      ? null
-                      : () async {
-                          _isLoading.value = true;
-
-                          try {
-                            final result = await apiService.login(
-                              emailController.text.trim(),
-                              passwordController.text.trim(),
-                            );
-
-                            final token = result["token"];
-                            final user = result["user"];
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("Login Berhasil ✅")),
-                            );
-
-                            Navigator.pushReplacement(
+                      const SizedBox(height: 10),
+                      const Text("Login untuk melanjutkan",
+                          style: TextStyle(color: Colors.grey)),
+                      const SizedBox(height: 30),
+                      TextFormField(
+                        controller: _usernameController,
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.person),
+                          labelText: 'Username',
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        validator: (v) => (v == null || v.isEmpty)
+                            ? 'Username tidak boleh kosong'
+                            : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.lock),
+                          labelText: 'Password',
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        validator: (v) => (v == null || v.isEmpty)
+                            ? 'Password tidak boleh kosong'
+                            : null,
+                      ),
+                      const SizedBox(height: 25),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _login,
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            backgroundColor: Color.fromARGB(255, 73, 243, 118),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                      color: Colors.white, strokeWidth: 2),
+                                )
+                              : const Text('Login',
+                                  style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => MainNavigation(
-                                  token: token,
-                                  userId: user["id_user"],
-                                  nama:
-                                      user["nama"], // kalau homepage butuh nama
-                                ),
-                              ),
-                            );
-                          } catch (e) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(e.toString())),
-                            );
-                          } finally {
-                            _isLoading.value = false;
-                          }
+                                  builder: (_) => const Register()));
                         },
-                  child: loading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          "Masuk",
+                        child: const Text(
+                          "Belum punya akun? Daftar Sekarang",
                           style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
+                              color: Color.fromARGB(255, 73, 243, 118),
+                              fontWeight: FontWeight.bold),
                         ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                  ),
                 ),
-              );
-            },
+              ),
+            ),
           ),
-        ],
+        ),
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:final_project/home.dart';
 import 'package:final_project/produk.dart';
 import 'package:final_project/profile.dart';
+import 'package:final_project/toko.dart';
 import 'package:flutter/material.dart';
 
 class MainNavigation extends StatefulWidget {
@@ -26,8 +27,12 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget build(BuildContext context) {
     final screens = [
       HomePage(userId: widget.userId, token: widget.token, nama: widget.nama),
-      ProductPage(token: widget.token, userId: widget.userId),
-      ProfilePage(nama: widget.nama),
+      ProductListPage(
+        token: widget.token,
+        userId: widget.userId,
+      ),
+      StoreListPage(),
+      ProfilePage(token: widget.token),
     ];
 
     return Scaffold(
@@ -47,6 +52,10 @@ class _MainNavigationState extends State<MainNavigation> {
           BottomNavigationBarItem(
             icon: Icon(Icons.shopping_bag_outlined),
             label: "Produk",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.store_outlined),
+            label: "Toko",
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),

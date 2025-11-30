@@ -52,7 +52,10 @@ class _CategoryPageState extends State<CategoryPage> {
         backgroundColor: Colors.green,
       ),
       body: loading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: CircularProgressIndicator(
+              color: Colors.green.shade600,
+            ))
           : ListView.builder(
               padding: const EdgeInsets.all(15),
               itemCount: categories.length,

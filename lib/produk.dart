@@ -1,148 +1,134 @@
+import 'dart:convert';
+import 'package:final_project/detail-produk.dart';
 import 'package:flutter/material.dart';
-import 'api-service.dart';
-import 'tambah+edit-produk.dart';
+import 'package:http/http.dart' as http;
 
-class ProductPage extends StatefulWidget {
+class ProductListPage extends StatefulWidget {
   final String token;
   final int userId;
-  const ProductPage({super.key, required this.token, required this.userId});
+
+  const ProductListPage({
+    super.key,
+    required this.token,
+    required this.userId,
+  });
 
   @override
-  State<ProductPage> createState() => _ProductPageState();
+  State<ProductListPage> createState() => _ProductListPageState();
 }
 
-class _ProductPageState extends State<ProductPage> {
-  final ApiServices api = ApiServices();
+class _ProductListPageState extends State<ProductListPage> {
+  List products = [];
+  bool loading = true;
 
-  late Future<List<Product>> productFuture;
+  Map<String, dynamic> normalizeProduct(Map<String, dynamic> p) {
+    return {
+      "id_produk": p["id_produk"] ?? p["id"] ?? 0,
+      "nama_produk": p["nama_produk"] ?? p["nama"] ?? "",
+      "harga": p["harga"] ?? 0,
+      "stok": p["stok"] ?? 0,
+      "deskripsi": p["deskripsi"] ?? "",
+      "nama_kategori": p["nama_kategori"] ?? p["kategori"] ?? "",
+      "gambar": p["gambar"] ?? p["image"] ?? "",
+    };
+  }
 
   @override
   void initState() {
     super.initState();
-    productFuture = api.getProducts();
+    fetchProducts();
   }
 
-  void refreshData() {
-    setState(() {
-      productFuture = api.getProducts();
-    });
+  Future<void> fetchProducts() async {
+    try {
+      final url = Uri.parse("https://learncode.biz.id/api/products");
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        setState(() {
+          products = data["data"] ?? [];
+          loading = false;
+        });
+      } else {
+        setState(() => loading = false);
+      }
+    } catch (e) {
+      print("ERROR FETCH: $e");
+      setState(() => loading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Produk")),
-      floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.add),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const ProductFormPage()),
-          ).then((value) => refreshData());
-        },
+      appBar: AppBar(
+        backgroundColor: Colors.green.shade600,
+        title: const Text(
+          "Produk",
+          style: TextStyle(color: Colors.white),
+        ),
+        centerTitle: true,
       ),
-      body: FutureBuilder<List<Product>>(
-        future: productFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: loading
+          ? Center(
+              child: CircularProgressIndicator(
+              color: Colors.green.shade600,
+            ))
+          : products.isEmpty
+              ? const Center(child: Text("Tidak ada produk"))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: products.length,
+                  itemBuilder: (context, index) {
+                    final p = products[index];
+                    final fixed = normalizeProduct(p);
 
-          if (snapshot.hasError) {
-            return Center(child: Text("Gagal load server: ${snapshot.error}"));
-          }
+                    final imageUrl = fixed["gambar"] != ""
+                        ? "https://learncode.biz.id/storage/${fixed['gambar']}"
+                        : null;
 
-          final products = snapshot.data ?? [];
+                    return Card(
+                      elevation: 3,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          radius: 28,
+                          backgroundColor: Colors.green.shade200,
+                          backgroundImage:
+                              imageUrl != null ? NetworkImage(imageUrl) : null,
+                        ),
 
-          if (products.isEmpty) {
-            return const Center(child: Text("Belum ada produk"));
-          }
+                        title: Text(
+                          fixed["nama_produk"],
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
 
-          return ListView.builder(
-            itemCount: products.length,
-            itemBuilder: (context, index) {
-              final p = products[index];
-              return Card(
-                child: ListTile(
-                  leading: Image.network(
-                    p.image,
-                    width: 60,
-                    height: 60,
-                    fit: BoxFit.cover,
-                    errorBuilder: (c, o, s) => const Icon(Icons.broken_image),
-                  ),
-                  title: Text(p.name),
-                  subtitle: Text("Rp ${p.price}"),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: () {
+                        subtitle: Text(
+                          "Rp ${fixed["harga"]}",
+                          style: const TextStyle(fontSize: 13),
+                        ),
+
+                        // ⬇⬇⬇ CLICK KE DETAIL PRODUK
+                        onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => ProductFormPage(product: p),
+                              builder: (_) => DetailProdukPage(product: fixed),
                             ),
-                          ).then((value) => refreshData());
+                          );
                         },
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () async {
-                          final ok = await api.deleteProduct(p.id);
-                          if (ok) refreshData();
-                        },
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-}
-
-// Product model (jika mau dipisah, bisa buat file product_model.dart)
-class Product {
-  final int id;
-  final String name;
-  final int categoryId;
-  final String categoryName;
-  final int price;
-  final int stock;
-  final String description;
-  final String date;
-  final String image; // ambil gambar pertama atau kosong
-
-  Product({
-    required this.id,
-    required this.name,
-    required this.categoryId,
-    required this.categoryName,
-    required this.price,
-    required this.stock,
-    required this.description,
-    required this.date,
-    required this.image,
-  });
-
-  factory Product.fromJson(Map<String, dynamic> json) {
-    final images = json['images'] as List? ?? [];
-
-    return Product(
-      id: json['id_produk'],
-      name: json['nama_produk'] ?? '',
-      categoryId: int.parse(json['id_kategori'].toString()),
-      categoryName: json['nama_kategori'] ?? '',
-      price: int.parse(json['harga'].toString()),
-      stock: int.parse(json['stok'].toString()),
-      description: json['deskripsi'] ?? '',
-      date: json['tanggal_upload'] ?? '',
-      image: images.isNotEmpty ? images[0]['url']?.toString() ?? "" : "",
     );
   }
 }
